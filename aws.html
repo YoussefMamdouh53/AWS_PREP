@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AWS Exam Practice</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f9fafb;
+        }
+        
+        .question-card {
+            transition: all 0.3s ease;
+        }
+        
+        .question-card:hover {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        
+        .choice {
+            transition: all 0.2s ease;
+        }
+        
+        .choice:hover {
+            background-color: #f3f4f6;
+        }
+        
+        .choice.selected {
+            background-color: #dbeafe;
+            border-color: #3b82f6;
+        }
+        
+        .choice.correct {
+            background-color: #d1fae5;
+            border-color: #10b981;
+        }
+        
+        .choice.incorrect {
+            background-color: #fee2e2;
+            border-color: #ef4444;
+        }
+        
+        .loading-spinner {
+            border: 3px solid rgba(59, 130, 246, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid #3b82f6;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="app" class="min-h-screen flex flex-col">
+        <header class="bg-white shadow-sm">
+            <div class="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex justify-between items-center">
+                <h1 class="text-xl font-bold text-gray-800">AWS Exam Practice</h1>
+                <div class="flex space-x-4">
+                    <button id="fileUploadBtn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium">
+                        Upload Questions
+                    </button>
+                    <input type="file" id="fileInput" accept=".json" class="hidden">
+                    <button id="loadSampleBtn" class="px-4 py-2 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200 transition-colors text-sm font-medium">
+                        Load Sample
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-grow max-w-7xl w-full mx-auto px-4 py-6 sm:px-6 lg:px-8">
+            <div id="introScreen" class="text-center py-16">
+                <div class="max-w-md mx-auto">
+                    <svg class="mx-auto h-16 w-16 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <h2 class="mt-4 text-2xl font-bold text-gray-800">Welcome to AWS Exam Practice</h2>
+                    <p class="mt-2 text-gray-600">Upload a JSON file with exam questions or load the sample questions to get started.</p>
+                    <div class="mt-6 flex justify-center space-x-4">
+                        <button id="introUploadBtn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium">
+                            Upload Questions
+                        </button>
+                        <button id="introSampleBtn" class="px-4 py-2 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200 transition-colors text-sm font-medium">
+                            Load Sample
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="loadingScreen" class="hidden text-center py-16">
+                <div class="loading-spinner mx-auto"></div>
+                <p class="mt-4 text-gray-600">Loading questions...</p>
+            </div>
+
+            <div id="questionsContainer" class="hidden space-y-6">
+                <!-- Questions will be rendered here -->
+            </div>
+
+            <div id="statsContainer" class="hidden mt-8 bg-white p-6 rounded-lg shadow-sm">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">Statistics</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-blue-50 p-4 rounded-md">
+                        <div class="text-sm font-medium text-blue-600">Total Questions</div>
+                        <div id="totalQuestions" class="text-2xl font-bold text-gray-800 mt-1">0</div>
+                    </div>
+                    <div class="bg-green-50 p-4 rounded-md">
+                        <div class="text-sm font-medium text-green-600">Correct Answers</div>
+                        <div id="correctAnswers" class="text-2xl font-bold text-gray-800 mt-1">0</div>
+                    </div>
+                    <div class="bg-red-50 p-4 rounded-md">
+                        <div class="text-sm font-medium text-red-600">Incorrect Answers</div>
+                        <div id="incorrectAnswers" class="text-2xl font-bold text-gray-800 mt-1">0</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="bg-white border-t border-gray-200 mt-auto">
+            <div class="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
+                <p class="text-sm text-gray-500 text-center">AWS Exam Practice Tool - Created 2025</p>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM elements
+            const fileUploadBtn = document.getElementById('fileUploadBtn');
+            const fileInput = document.getElementById('fileInput');
+            const loadSampleBtn = document.getElementById('loadSampleBtn');
+            const introUploadBtn = document.getElementById('introUploadBtn');
+            const introSampleBtn = document.getElementById('introSampleBtn');
+            const introScreen = document.getElementById('introScreen');
+            const loadingScreen = document.getElementById('loadingScreen');
+            const questionsContainer = document.getElementById('questionsContainer');
+            const statsContainer = document.getElementById('statsContainer');
+            const totalQuestionsEl = document.getElementById('totalQuestions');
+            const correctAnswersEl = document.getElementById('correctAnswers');
+            const incorrectAnswersEl = document.getElementById('incorrectAnswers');
+
+            // State
+            let questions = [];
+            let userAnswers = {};
+            let correctCount = 0;
+            let incorrectCount = 0;
+
+            // Sample questions
+            const sampleQuestions = [
+                {
+                    question_id: 874573,
+                    question_body: "A company is implementing an application on Amazon EC2 instances. The application needs to process incoming transactions. When the application detects a transaction that is not valid, the application must send a chat message to the company's support team. To send the message, the application needs to retrieve the access token to authenticate by using the chat API.A developer needs to implement a solution to store the access token. The access token must be encrypted at rest and in transit. The access token must also be accessible from other AWS accounts.Which solution will meet these requirements with the LEAST management overhead?",
+                    choices: [
+                        {
+                            text: "A. Use an AWS Systems Manager Parameter Store SecureString parameter that uses an AWS Key Management Service (AWS KMS) AWS managed key to store the access token. Add a resource-based policy to the parameter to allow access from other accounts. Update the IAM role of the EC2 instances with permissions to access Parameter Store. Retrieve the token from Parameter Store with the decrypt flag enabled. Use the decrypted access token to send the message to the chat.",
+                            correct: false
+                        },
+                        {
+                            text: "B. Encrypt the access token by using an AWS Key Management Service (AWS KMS) customer managed key. Store the access token in an Amazon DynamoDB table. Update the IAM role of the EC2 instances with permissions to access DynamoDB and AWS KMS. Retrieve the token from DynamoDDecrypt the token by using AWS KMS on the EC2 instances. Use the decrypted access token to send the message to the chat.",
+                            correct: false
+                        },
+                        {
+                            text: "C. Use AWS Secrets Manager with an AWS Key Management Service (AWS KMS) customer managed key to store the access token. Add a resource-based policy to the secret to allow access from other accounts. Update the IAM role of the EC2 instances with permissions to access Secrets Manager. Retrieve the token from Secrets Manager. Use the decrypted access token to send the message to the chat.",
+                            correct: true
+                        },
+                        {
+                            text: "D. Encrypt the access token by using an AWS Key Management Service (AWS KMS) AWS managed key. Store the access token in an Amazon S3 bucket. Add a bucket policy to the S3 bucket to allow access from other accounts. Update the IAM role of the EC2 instances with permissions to access Amazon S3 and AWS KMS. Retrieve the token from the S3 bucket. Decrypt the token by using AWS KMS on the EC2 instances. Use the decrypted access token to send the massage to the chat.",
+                            correct: false
+                        }
+                    ]
+                },
+                {
+                    question_id: 874574,
+                    question_body: "A company needs to implement a serverless application on AWS. The application will receive events from Amazon EventBridge and will need to query data from an Amazon DynamoDB table. The company wants to minimize the management overhead and ensure the application scales automatically.",
+                    choices: [
+                        {
+                            text: "A. Use Amazon EC2 instances in an Auto Scaling group to process the events.",
+                            correct: false
+                        },
+                        {
+                            text: "B. Use AWS Lambda functions to process the events.",
+                            correct: true
+                        },
+                        {
+                            text: "C. Use Amazon ECS with Fargate to run containers that process the events.",
+                            correct: false
+                        },
+                        {
+                            text: "D. Use Amazon EKS to run Kubernetes pods that process the events.",
+                            correct: false
+                        }
+                    ]
+                },
+                {
+                    question_id: 874575,
+                    question_body: "A company is developing a website that needs to serve content globally with low latency. The website content is stored in an Amazon S3 bucket. What is the most cost-effective solution to ensure the website content is delivered with low latency to users worldwide?",
+                    choices: [
+                        {
+                            text: "A. Use Amazon Route 53 to route traffic to multiple EC2 instances in different regions.",
+                            correct: false
+                        },
+                        {
+                            text: "B. Use Amazon CloudFront with the S3 bucket as the origin.",
+                            correct: true
+                        },
+                        {
+                            text: "C. Replicate the S3 bucket to multiple regions using S3 Cross-Region Replication.",
+                            correct: false
+                        },
+                        {
+                            text: "D. Use Amazon Global Accelerator to route traffic to the S3 bucket.",
+                            correct: false
+                        }
+                    ]
+                }
+            ];
+
+            // Event listeners
+            fileUploadBtn.addEventListener('click', () => fileInput.click());
+            introUploadBtn.addEventListener('click', () => fileInput.click());
+            loadSampleBtn.addEventListener('click', loadSampleData);
+            introSampleBtn.addEventListener('click', loadSampleData);
+            fileInput.addEventListener('change', handleFileUpload);
+
+            // Load sample data
+            function loadSampleData() {
+                showLoadingScreen();
+                // Simulate loading delay for better UX
+                setTimeout(() => {
+                    questions = sampleQuestions;
+                    renderQuestions();
+                    updateStats();
+                    hideLoadingScreen();
+                }, 800);
+            }
+
+            // Handle file upload
+            function handleFileUpload(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                showLoadingScreen();
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        if (Array.isArray(data)) {
+                            questions = data;
+                        } else if (data.questions && Array.isArray(data.questions)) {
+                            questions = data.questions;
+                        } else {
+                            // Try to handle the single question format from the example
+                            questions = [data];
+                        }
+                        renderQuestions();
+                        updateStats();
+                        hideLoadingScreen();
+                    } catch (error) {
+                        alert('Error parsing JSON file: ' + error.message);
+                        hideLoadingScreen();
+                        showIntroScreen();
+                    }
+                };
+                reader.readAsText(file);
+                // Reset file input for reuse
+                event.target.value = '';
+            }
+
+            // Render questions
+            function renderQuestions() {
+                questionsContainer.innerHTML = '';
+                
+                questions.forEach((question, index) => {
+                    const questionDiv = document.createElement('div');
+                    questionDiv.className = 'question-card bg-white rounded-lg shadow-sm p-6';
+                    questionDiv.dataset.questionId = question.question_id;
+
+                    const questionHeader = document.createElement('div');
+                    questionHeader.className = 'flex justify-between items-center mb-4';
+                    questionHeader.innerHTML = `
+                        <h2 class="text-lg font-semibold text-gray-800">Question ${index + 1}</h2>
+                        <div class="flex space-x-2">
+                            <button class="solution-toggle px-3 py-1 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 text-sm font-medium" data-question-id="${question.question_id}">
+                                Show Solution
+                            </button>
+                        </div>
+                    `;
+
+                    const questionBody = document.createElement('div');
+                    questionBody.className = 'mb-6';
+                    questionBody.innerHTML = `<p class="text-gray-700">${question.question_body}</p>`;
+
+                    const choicesDiv = document.createElement('div');
+                    choicesDiv.className = 'space-y-3';
+
+                    question.choices.forEach((choice, choiceIndex) => {
+                        const choiceId = `question-${question.question_id}-choice-${choiceIndex}`;
+                        const choiceDiv = document.createElement('div');
+                        choiceDiv.className = 'choice border rounded-md p-4 cursor-pointer';
+                        choiceDiv.dataset.choiceIndex = choiceIndex;
+                        choiceDiv.dataset.correct = choice.correct;
+                        choiceDiv.innerHTML = `<p class="text-gray-700">${choice.text}</p>`;
+                        
+                        choiceDiv.addEventListener('click', () => handleChoiceSelection(question.question_id, choiceIndex, choice.correct));
+                        
+                        choicesDiv.appendChild(choiceDiv);
+                    });
+
+                    const solutionDiv = document.createElement('div');
+                    solutionDiv.className = 'solution-container mt-6 bg-gray-50 p-4 rounded-md hidden';
+                    solutionDiv.dataset.questionId = question.question_id;
+
+                    // Find the correct answer
+                    const correctChoice = question.choices.find(choice => choice.correct);
+                    const correctAnswer = correctChoice ? correctChoice.text.split('.')[0] : 'Not specified';
+
+                    solutionDiv.innerHTML = `
+                        <div class="flex items-center mb-2">
+                            <svg class="h-5 w-5 text-green-500 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                            </svg>
+                            <span class="font-medium text-gray-800">Correct Answer: ${correctAnswer}</span>
+                        </div>
+
+                        <a class="text-blue-600" href="https://www.examtopics.com/ajax/discussion/exam-question/${question.question_id}/" target="_blank" rel="noopener noreferrer">Discussion</a>
+                        <p class="text-gray-600">The correct choice is highlighted in green above.</p>
+                    `;
+
+                    questionDiv.appendChild(questionHeader);
+                    questionDiv.appendChild(questionBody);
+                    questionDiv.appendChild(choicesDiv);
+                    questionDiv.appendChild(solutionDiv);
+
+                    questionsContainer.appendChild(questionDiv);
+                });
+
+                // Add event listeners to solution toggle buttons
+                document.querySelectorAll('.solution-toggle').forEach(button => {
+                    button.addEventListener('click', toggleSolution);
+                });
+
+                // Show questions container
+                introScreen.classList.add('hidden');
+                questionsContainer.classList.remove('hidden');
+                statsContainer.classList.remove('hidden');
+            }
+
+            // Handle choice selection
+            function handleChoiceSelection(questionId, choiceIndex, isCorrect) {
+                const questionDiv = document.querySelector(`.question-card[data-question-id="${questionId}"]`);
+                const choices = questionDiv.querySelectorAll('.choice');
+                const solutionDiv = questionDiv.querySelector('.solution-container');
+                const solutionToggleBtn = questionDiv.querySelector('.solution-toggle');
+                
+                // If already answered, do nothing
+                if (userAnswers[questionId] !== undefined) return;
+                
+                // Update state
+                userAnswers[questionId] = {
+                    choiceIndex,
+                    isCorrect
+                };
+                
+                // Update UI
+                choices.forEach((choice, index) => {
+                    choice.classList.remove('selected');
+                    if (index === choiceIndex) {
+                        choice.classList.add('selected');
+                        if (isCorrect) {
+                            choice.classList.add('correct');
+                            correctCount++;
+                        } else {
+                            choice.classList.add('incorrect');
+                            incorrectCount++;
+                        }
+                    }
+                    
+                    // Show correct answer
+                    if (choice.dataset.correct === 'true') {
+                        choice.classList.add('correct');
+                    }
+                });
+                
+                // Show solution
+                solutionDiv.classList.remove('hidden');
+                solutionToggleBtn.textContent = 'Hide Solution';
+                
+                // Update stats
+                updateStats();
+            }
+
+            // Toggle solution visibility
+            function toggleSolution(event) {
+                const questionId = event.target.dataset.questionId;
+                const solutionContainer = document.querySelector(`.solution-container[data-question-id="${questionId}"]`);
+                
+                if (solutionContainer.classList.contains('hidden')) {
+                    solutionContainer.classList.remove('hidden');
+                    event.target.textContent = 'Hide Solution';
+                    
+                    // If not answered yet, highlight the correct answer
+                    if (userAnswers[questionId] === undefined) {
+                        const questionDiv = document.querySelector(`.question-card[data-question-id="${questionId}"]`);
+                        const choices = questionDiv.querySelectorAll('.choice');
+                        
+                        choices.forEach(choice => {
+                            if (choice.dataset.correct === 'true') {
+                                choice.classList.add('correct');
+                            }
+                        });
+                    }
+                } else {
+                    solutionContainer.classList.add('hidden');
+                    event.target.textContent = 'Show Solution';
+                    
+                    // If not answered yet, remove highlighting
+                    if (userAnswers[questionId] === undefined) {
+                        const questionDiv = document.querySelector(`.question-card[data-question-id="${questionId}"]`);
+                        const choices = questionDiv.querySelectorAll('.choice');
+                        
+                        choices.forEach(choice => {
+                            choice.classList.remove('correct');
+                        });
+                    }
+                }
+            }
+
+            // Update statistics
+            function updateStats() {
+                totalQuestionsEl.textContent = questions.length;
+                correctAnswersEl.textContent = correctCount;
+                incorrectAnswersEl.textContent = incorrectCount;
+            }
+
+            // UI helpers
+            function showLoadingScreen() {
+                introScreen.classList.add('hidden');
+                questionsContainer.classList.add('hidden');
+                statsContainer.classList.add('hidden');
+                loadingScreen.classList.remove('hidden');
+            }
+
+            function hideLoadingScreen() {
+                loadingScreen.classList.add('hidden');
+            }
+
+            function showIntroScreen() {
+                introScreen.classList.remove('hidden');
+                questionsContainer.classList.add('hidden');
+                statsContainer.classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
